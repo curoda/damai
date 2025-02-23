@@ -81,7 +81,7 @@ if uploaded_file is not None:
         def compute_entry(l_val, m_val, n_val, p_val, q_val, r_val):
             # Use the raw integer sum (no modulo)
             product = p_val * l_val + q_val * m_val + r_val * n_val
-            angle = (2 * np.pi / 24.0) * product
+            angle = (2 * np.pi / 6800.0) * product
             return np.cos(angle) - 1j * np.sin(angle)
         
         # Build the 24x24 g matrix
