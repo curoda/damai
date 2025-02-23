@@ -6,28 +6,37 @@ from io import BytesIO
 # Configure the Streamlit page
 st.set_page_config(page_title="24x24 g Matrix Calculator", layout="wide")
 
-st.title("24x24 g Matrix Calculator")
+st.title("24x24 g Matrix Calculator (Standard Matrix Multiplication)")
 st.markdown(r"""
-This app computes the **g** matrix defined as:
+This app computes the **g** matrix defined by:
 \[
-g(l,m,n,p,q,r) = \cos\!\Bigl(\frac{2\pi}{24}\,(p\,l + q\,m + r\,n)\Bigr) - i\,\sin\!\Bigl(\frac{2\pi}{24}\,(p\,l + q\,m + r\,n)\Bigr)
+g(l,m,n,p,q,r) = \cos\!\Bigl(\frac{2\pi}{24}\,(p\,l + q\,m + r\,n)\Bigr) 
+- i\,\sin\!\Bigl(\frac{2\pi}{24}\,(p\,l + q\,m + r\,n)\Bigr).
 \]
-using the input data provided in a spreadsheet. The **g** matrix is a 24×24 matrix constructed as follows:
 
-- For row \(i\) (from the table), use \((l_i,\, m_i,\, n_i)\).
-- For column \(j\) (from the table), use \((p_j,\, q_j,\, r_j)\).
-- Compute
-  \[
-  g_{i,j} = \cos\!\Bigl(\frac{2\pi}{24}(p_j\,l_i + q_j\,m_i + r_j\,n_i)\Bigr) - i\,\sin\!\Bigl(\frac{2\pi}{24}(p_j\,l_i + q_j\,m_i + r_j\,n_i)\Bigr).
-  \]
+**Steps**:
+1. You provide a single spreadsheet with 24 rows. Each row has columns: 
+   **index**, **l**, **m**, **n**, **p**, **q**, **r**.
+2. For the \((i,j)\) entry of the 24×24 matrix \(g\):
+   - Use row \(i\)'s \((l_i,m_i,n_i)\).
+   - Use row \(j\)'s \((p_j,q_j,r_j)\).
+   - Compute 
+     \[
+     g_{i,j} = \cos\!\Bigl(\frac{2\pi}{24}(p_j\,l_i + q_j\,m_i + r_j\,n_i)\Bigr) 
+     - i\,\sin\!\Bigl(\frac{2\pi}{24}(p_j\,l_i + q_j\,m_i + r_j\,n_i)\Bigr).
+     \]
+3. Compute the **complex conjugate** of \(g\), call it **gcc**.
+4. Compute the **transpose** of **gcc** (swap rows/columns).
+5. Multiply \(g\) by the transpose of gcc **using standard matrix multiplication**:
+   \[
+   (g \times \mathrm{gcc}^T)_{i,j} 
+   \;=\; \sum_{k=1}^{24} g_{i,k}\,\bigl[\mathrm{gcc}^T\bigr]_{k,j}.
+   \]
 
-The app then computes:
-- The complex conjugate matrix **gcc** (by replacing \(i\) with \(-i\) in each entry),
-- The transpose of **gcc**, and
-- The **elementwise** product of **g** and the transposed **gcc**.
+Finally, the app displays all results in 24×24 tables.
 """)
 
-st.markdown("### Upload Your Spreadsheet")
+st.markdown("### 1. Upload Your Spreadsheet")
 uploaded_file = st.file_uploader("Upload a CSV or Excel file", type=["csv", "xlsx"])
 
 @st.cache_data
@@ -48,7 +57,7 @@ if uploaded_file is not None:
     else:
         df = load_data(uploaded_file, "xlsx")
     
-    st.markdown("### Input Data Preview")
+    st.markdown("### 2. Input Data Preview")
     st.dataframe(df)
     
     # Check that the required columns exist.
@@ -68,8 +77,9 @@ if uploaded_file is not None:
         q_arr = df["q"].to_numpy()
         r_arr = df["r"].to_numpy()
         
-        # Define function to compute each matrix element (using raw integer sum)
+        # Define function to compute each matrix element
         def compute_entry(l_val, m_val, n_val, p_val, q_val, r_val):
+            # Use the raw integer sum (no modulo)
             product = p_val * l_val + q_val * m_val + r_val * n_val
             angle = (2 * np.pi / 24.0) * product
             return np.cos(angle) - 1j * np.sin(angle)
@@ -87,22 +97,21 @@ if uploaded_file is not None:
         # Compute the transpose of gcc
         G_cc_T = G_cc.T
         
-        # Elementwise multiplication: g * (transpose of gcc)
-        elementwise_product = G * G_cc_T
+        # 3. Multiply G by gcc^T (standard matrix multiplication)
+        G_product = G @ G_cc_T
         
-        st.markdown("### Results")
+        st.markdown("### 3. Results")
         
         with st.expander("Show g Matrix (24×24)"):
             st.dataframe(pd.DataFrame(G.astype(str)))
         
-        with st.expander("Show Complex Conjugate Matrix gcc (24×24)"):
+        with st.expander("Show Complex Conjugate Matrix (gcc) (24×24)"):
             st.dataframe(pd.DataFrame(G_cc.astype(str)))
         
-        with st.expander("Show Transpose of gcc (24×24)"):
+        with st.expander("Show Transpose of gcc (gccᵀ) (24×24)"):
             st.dataframe(pd.DataFrame(G_cc_T.astype(str)))
         
-        with st.expander("Show Elementwise Product (g * gccᵀ) (24×24)"):
-            st.dataframe(pd.DataFrame(elementwise_product.astype(str)))
+        with st.expander("Show Product (g × gccᵀ) (24×24)"):
+            st.dataframe(pd.DataFrame(G_product.astype(str)))
             
         st.success("Calculations complete!")
-
