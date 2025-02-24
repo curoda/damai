@@ -6,34 +6,34 @@ from io import BytesIO
 # Configure the Streamlit page
 st.set_page_config(page_title="24x24 g Matrix Calculator", layout="wide")
 
-st.title("24x24 g Matrix Calculator (Standard Matrix Multiplication)")
+st.title("24x24 g Matrix Calculator (New Instructions)")
+
 st.markdown(r"""
-This app computes the **g** matrix defined by:
+**New Formula**:
 \[
-g(l,m,n,p,q,r) = \cos\!\Bigl(\frac{2\pi}{24}\,(p\,l + q\,m + r\,n)\Bigr) 
-- i\,\sin\!\Bigl(\frac{2\pi}{24}\,(p\,l + q\,m + r\,n)\Bigr).
+g(l,m,n,p,q,r) \;=\; 
+\cos\!\Bigl(\frac{2\pi}{6800}\,(p\,l + q\,m + r\,n)\Bigr)
+\;-\;
+i\,\sin\!\Bigl(\frac{2\pi}{6800}\,(p\,l + q\,m + r\,n)\Bigr).
 \]
 
-**Steps**:
-1. You provide a single spreadsheet with 24 rows. Each row has columns: 
-   **index**, **l**, **m**, **n**, **p**, **q**, **r**.
-2. For the \((i,j)\) entry of the 24×24 matrix \(g\):
-   - Use row \(i\)'s \((l_i,m_i,n_i)\).
-   - Use row \(j\)'s \((p_j,q_j,r_j)\).
-   - Compute 
-     \[
-     g_{i,j} = \cos\!\Bigl(\frac{2\pi}{24}(p_j\,l_i + q_j\,m_i + r_j\,n_i)\Bigr) 
-     - i\,\sin\!\Bigl(\frac{2\pi}{24}(p_j\,l_i + q_j\,m_i + r_j\,n_i)\Bigr).
-     \]
-3. Compute the **complex conjugate** of \(g\), call it **gcc**.
-4. Compute the **transpose** of **gcc** (swap rows/columns).
-5. Multiply \(g\) by the transpose of gcc **using standard matrix multiplication**:
-   \[
-   (g \times \mathrm{gcc}^T)_{i,j} 
-   \;=\; \sum_{k=1}^{24} g_{i,k}\,\bigl[\mathrm{gcc}^T\bigr]_{k,j}.
-   \]
+We have a single table with 24 rows, each row containing \((l,m,n,p,q,r)\).  
 
-Finally, the app displays all results in 24×24 tables.
+- The **column** index \(j\) of the 24×24 matrix corresponds to \((l_j,m_j,n_j)\).  
+- The **row** index \(i\) corresponds to \((p_i,q_i,r_i)\).  
+
+Thus, for \((i,j)\) we do:
+\[
+g_{i,j} \;=\;
+\cos\!\Bigl(\tfrac{2\pi}{6800}\,\bigl[p_i\,l_j + q_i\,m_j + r_i\,n_j\bigr]\Bigr)
+\;-\;
+i\,\sin\!\Bigl(\tfrac{2\pi}{6800}\,\bigl[p_i\,l_j + q_i\,m_j + r_i\,n_j\bigr]\Bigr).
+\]
+
+After building the matrix \(g\), we compute:
+1. **gcc** = the complex conjugate of \(g\).
+2. **gccᵀ** = the transpose of gcc.
+3. The product \(g \times gcc^\mathsf{T}\) (standard matrix multiplication).
 """)
 
 st.markdown("### 1. Upload Your Spreadsheet")
@@ -78,18 +78,21 @@ if uploaded_file is not None:
         r_arr = df["r"].to_numpy()
         
         # Define function to compute each matrix element
-        def compute_entry(l_val, m_val, n_val, p_val, q_val, r_val):
-            # Use the raw integer sum (no modulo)
+        def compute_entry(p_val, q_val, r_val, l_val, m_val, n_val):
             product = p_val * l_val + q_val * m_val + r_val * n_val
             angle = (2 * np.pi / 6800.0) * product
             return np.cos(angle) - 1j * np.sin(angle)
         
         # Build the 24x24 g matrix
+        # Row i uses (p_i, q_i, r_i)
+        # Column j uses (l_j, m_j, n_j)
         G = np.empty((24, 24), dtype=complex)
         for i in range(24):
             for j in range(24):
-                G[i, j] = compute_entry(l_arr[i], m_arr[i], n_arr[i],
-                                        p_arr[j], q_arr[j], r_arr[j])
+                G[i, j] = compute_entry(
+                    p_arr[i], q_arr[i], r_arr[i], 
+                    l_arr[j], m_arr[j], n_arr[j]
+                )
         
         # Compute the complex conjugate matrix gcc
         G_cc = np.conjugate(G)
@@ -97,7 +100,7 @@ if uploaded_file is not None:
         # Compute the transpose of gcc
         G_cc_T = G_cc.T
         
-        # 3. Multiply G by gcc^T (standard matrix multiplication)
+        # Standard matrix multiplication: g x gccᵀ
         G_product = G @ G_cc_T
         
         st.markdown("### 3. Results")
